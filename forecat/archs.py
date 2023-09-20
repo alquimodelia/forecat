@@ -14,7 +14,9 @@ from keras.layers import (
     MaxPooling2D,
     MaxPooling3D,
     Normalization,
+    RepeatVector,
     Reshape,
+    TimeDistributed,
 )
 from keras.models import Model
 
@@ -69,6 +71,9 @@ class ForeArch:
     def set_output_shape(self):
         """Sets the output shape."""
         self.output_shape = (self.Y_timeseries, self.n_features_predict)
+
+    def interpretation_layers(self):
+        pass
 
     def update_kernel(
         self,
@@ -285,21 +290,30 @@ class LSTMArch(ForeArch):
 
         return x
 
-    def architeture(self, block_repetition=1):
+    def interpretation_layers(self, output_layer, dense_args):
+        output_layer = Dense(self.dense_out, **dense_args)(output_layer)
+        output_layer = self.get_output_layer(output_layer)
+        return output_layer
+
+    def architeture(
+        self,
+        block_repetition=1,
+        dense_args={"activation": "softplus"},
+        block_args=None,
+    ):
         input_layer = self.get_input_layer(flatten_input=False)
         if block_repetition == 1:
             output_layer = self.arch_block(input_layer)
         elif block_repetition > 1:
-            block_args = [{"lstm_args": {"return_sequences": True}}, {}]
+            if block_args is None:
+                block_args = [{"lstm_args": {"return_sequences": True}}, {}]
             output_layer = self.stacked_repetition(
                 input_layer, block_repetition, block_args=block_args
             )
-
         output_layer = Dropout(self.dropout_value)(output_layer)
-        output_layer = Dense(self.dense_out)(output_layer)
-        output_layer = self.get_output_layer(output_layer)
+        output_layer = self.interpretation_layers(output_layer, dense_args)
 
-        return Model(inputs=input_layer, outputs=output_layer)
+        return Model(inputs=self.input_layer, outputs=output_layer)
 
 
 class CNNArch(ForeArch):
@@ -355,4 +369,80 @@ class CNNArch(ForeArch):
         output_layer = DenseArch.arch_block(self, output_layer)
         output_layer = self.get_output_layer(output_layer)
 
-        return Model(inputs=input_layer, outputs=output_layer)
+        return Model(inputs=self.input_layer, outputs=output_layer)
+
+
+class UNETArch(ForeArch):
+    """
+    This architeture just follow the idea of a dense layers to solve the problem
+    """
+
+    def __init__(self, conv_dimension="1D", **kwargs):
+        self.set_dimension_layer(conv_dimension)
+        super().__init__(**kwargs)
+
+    def set_dimension_layer(self, conv_dimension):
+        if conv_dimension == "1D":
+            self.MaxPooling = MaxPooling1D
+            self.Conv = Conv1D
+            self.Dropout = Dropout
+        elif conv_dimension == "2D":
+            self.MaxPooling = MaxPooling2D
+            self.Conv = Conv2D
+            self.Dropout = Dropout
+        elif conv_dimension == "3D":
+            self.MaxPooling = MaxPooling3D
+            self.Conv = Conv3D
+            self.Dropout = Dropout
+
+    def architeture(self):
+        from forecat.unet import AttResUNet1D
+
+        n_filters = 16  # conv_args["filters"]
+
+        model_UNET = AttResUNet1D(
+            width=self.X_timeseries,
+            num_bands=self.n_features_train,
+            data_format="channels_last",
+            n_filters=n_filters,
+            num_classes=self.n_features_predict,
+            activation_end="relu",
+        )
+
+        x = Model(
+            inputs=model_UNET.input_layer, outputs=model_UNET.output_layer
+        )
+
+        return x
+
+
+class EncoderDecoder(LSTMArch):
+    def arch_block(
+        self,
+        x,
+        lstm_args={"units": 50, "activation": "relu"},
+        filter_enlarger=4,
+        filter_limit=200,
+    ):
+        # Default LSTM arguments
+        default_lstm_args = {"units": 50, "activation": "relu"}
+
+        # If lstm_args is provided, update the default arguments
+        if lstm_args is not None:
+            default_lstm_args.update(lstm_args)
+
+        x = LSTM(**lstm_args)(x)
+        x = RepeatVector(self.Y_timeseries)(x)
+        x = LSTM(**lstm_args, return_sequences=True)(x)
+        x = Dropout(self.dropout_value)(x)
+
+        return x
+
+    def interpretation_layers(self, x, dense_args):
+        time_dim_size = x.shape[1]
+        x = TimeDistributed(
+            Dense(self.dense_out / time_dim_size, **dense_args)
+        )(x)
+        x = Dropout(self.dropout_value)(x)
+        x = self.get_output_layer(x)
+        return x

@@ -1,5 +1,3 @@
-import os
-
 # Note that keras_core should only be imported after the backend
 # has been configured. The backend cannot be changed once the
 # package is imported.
@@ -57,7 +55,6 @@ def moving_mean_predictions(prediction, skip_step=1):
         if classes == 1:
             prediction = prediction[:, :, 0]
 
-    f = classes
     moving_mean_stack = None
     for i in range(classes):
         moving_mean = moving_mean_with_step(prediction, timesteps, skip_step)
