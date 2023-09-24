@@ -54,6 +54,8 @@ class ForeArch:
         n_features_train,
         n_features_predict,
         dropout=0.35,
+        activation_end="relu",
+        activation_middle="relu",
     ):
         self.X_timeseries = X_timeseries
         self.Y_timeseries = Y_timeseries
@@ -63,6 +65,9 @@ class ForeArch:
         self.set_input_shape()
         self.set_output_shape()
         self.dropout_value = dropout
+        self.activation_end = activation_end
+        self.activation_middle = activation_middle
+
 
     def set_input_shape(self):
         """Sets the input shape."""
@@ -137,7 +142,7 @@ class ForeArch:
 
         return input_layer
 
-    def get_output_layer(self, out_layer, dense_out=None, reshape_shape=None):
+    def get_output_layer(self, out_layer, reshape_shape=None):
         """
         Returns the output layer with optional reshaping.
 
@@ -145,8 +150,6 @@ class ForeArch:
         -----------
         out_layer: tensorflow.python.keras.engine.keras_tensor.KerasTensor
             Output layer
-        dense_out: int
-            Number of output neurons in the dense layer
         reshape_shape: tuple
             Shape to reshape the output layer
 
@@ -155,10 +158,10 @@ class ForeArch:
         out_layer: tensorflow.python.keras.engine.keras_tensor.KerasTensor
             Output layer
         """
-        if not reshape_shape:
+        if reshape_shape is None:
             reshape_shape = self.output_shape
 
-        if reshape_shape:
+        if not reshape_shape is None:
             out_layer = Reshape(reshape_shape)(out_layer)
         return out_layer
 
@@ -179,16 +182,20 @@ class ForeArch:
 
         return input_layer
 
-    def paralel_repetition(self, input_layer, block_repetition=1, block=None):
+    def paralel_repetition(self, input_layer, block_repetition=1, block=None, block_args=None):
         if not block:
             block = self.arch_block
 
         output_layer = list()
         block_in = input_layer
+        block_args_in = block_args
+
         for i in range(block_repetition):
             if isinstance(input_layer, list):
                 block_in = input_layer[i]
-            output_layer.append(block(block_in))
+            if isinstance(block_args, list):
+                block_args_in = block_args[i]
+            output_layer.append(block(block_in, **block_args_in))
 
         return output_layer
 
@@ -248,13 +255,23 @@ class DenseArch(ForeArch):
         filter_enlarger=4,
         filter_limit=200,
     ):
+        if isinstance(dense_args, list):
+            dense_args1 = dense_args[0]
+            dense_args2 = dense_args[1]
+        else:
+            dense_args1 = dense_args
+            dense_args2 = dense_args
+        filters_out = dense_args2.pop("filters", None)
+        if filters_out is  None:
+            filters_out = self.dense_out
+
         x = Dense(
             stays_if_not_smaller(
-                self.dense_out * filter_enlarger, filter_limit
+                filters_out * filter_enlarger, filter_limit
             ),
-            **dense_args,
+            **dense_args1,
         )(x)
-        x = Dense(self.dense_out)(x)
+        x = Dense(filters_out, **dense_args2,)(x)
 
         return x
 
@@ -342,11 +359,15 @@ class CNNArch(ForeArch):
     def arch_block(
         self,
         x,
-        conv_args={"filters": 16, "kernel_size": 3, "activation": "relu"},
+        conv_args={},
         max_pool_args={"pool_size": 2},
         filter_enlarger=4,
         filter_limit=200,
     ):
+        for k, v in {"filters": 16, "kernel_size": 3, "activation": "relu"}.items():
+            if k not in conv_args:
+                conv_args[k]=v
+
         x = self.Conv(**conv_args)(x)
 
         pool = self.update_kernel(max_pool_args["pool_size"], x.shape)
@@ -357,17 +378,47 @@ class CNNArch(ForeArch):
 
         return x
 
-    def architeture(self, block_repetition=1):
+    def interpretation_layers(self, output_layer, dense_args=None, output_layer_args={}):
+        if dense_args is None:
+            dense_args = {}
+            if self.activation_end != self.activation_middle:
+                dense_args=[{"activation":self.activation_middle},
+                {"activation":self.activation_end}
+                ]
+            else:
+                dense_args = {"activation":self.activation_end}
+            
+
+        output_layer = DenseArch.arch_block(self, output_layer, dense_args=dense_args)
+        output_layer = self.get_output_layer(output_layer, **output_layer_args)
+        return output_layer
+
+    def architeture(self, block_repetition=1, multitail=False):
         input_layer = self.get_input_layer(flatten_input=False)
         if block_repetition == 1:
             output_layer = self.arch_block(input_layer)
         elif block_repetition > 1:
+            num_filters = [{"conv_args":{"filters":2**f}} for f in np.arange(block_repetition)]
+            num_filters.reverse()
             output_layer = self.stacked_repetition(
                 input_layer, block_repetition
             )
         output_layer = Flatten()(output_layer)
-        output_layer = DenseArch.arch_block(self, output_layer)
-        output_layer = self.get_output_layer(output_layer)
+
+        if not multitail is False:
+            if isinstance(multitail, list):
+                multitail_repetition = len(multitail)
+            elif isinstance(multitail, int):
+                multitail_repetition = multitail
+            else:
+                multitail_repetition = 1
+
+
+            output_layer = self.paralel_repetition(output_layer, multitail_repetition, self.interpretation_layers, block_args=multitail)
+        else:
+            output_layer = self.interpretation_layers(output_layer)
+
+
 
         return Model(inputs=self.input_layer, outputs=output_layer)
 
