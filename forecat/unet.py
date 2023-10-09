@@ -1,24 +1,23 @@
-import os
+# This module is for internal use only, it should be in another
+#   package, specialized in images
+
 from functools import cached_property
 from typing import Any, Dict
-
-os.environ["KERAS_BACKEND"] = "tensorflow"
 
 # Note that keras_core should only be imported after the backend
 # has been configured. The backend cannot be changed once the
 # package is imported.
-import keras
-# import keras_core as keras
 import keras.backend as K
-import tensorflow as tf
-from keras.layers import (
+import keras_core as keras
+from keras_core import ops
+from keras_core.layers import (
     Activation,
     Add,
     BatchNormalization,
     Conv1D,
     Conv1DTranspose,
+    Cropping2D,
     Dropout,
-    Input,
     MaxPooling1D,
     Multiply,
     Reshape,
@@ -28,8 +27,7 @@ from keras.layers import (
 
 
 def count_number_divisions(size: int, count: int, by: int = 2, limit: int = 2):
-    """
-    Count the number of possible steps.
+    """Count the number of possible steps.
 
     Parameters
     ----------
@@ -56,7 +54,7 @@ class ModelMagia(keras.Model):
         raise NotImplementedError
 
     def define_input_layer(self):
-        self.input_layer = Input(self.model_input_shape)
+        self.input_layer = keras.Input(self.model_input_shape)
 
     def output_layer(self):
         raise NotImplementedError
@@ -90,11 +88,11 @@ class ModelMagia(keras.Model):
 
 
 def repeat_elem(tensor, rep):
-    return tf.tile(tensor, [1, 1, rep])
+    return ops.tile(tensor, [1, 1, rep])
 
 
 class UNet(ModelMagia):
-    """Base classe for Unet models"""
+    """Base classe for Unet models."""
 
     def __init__(
         self,
@@ -279,7 +277,6 @@ class UNet(ModelMagia):
         padding: str = "same",
     ):
         """Build deep neural network."""
-
         input_img = self.input_layer
         # self.define_number_convolution_layers()
 
@@ -311,10 +308,11 @@ class UNet(ModelMagia):
         return unet_output
 
     def gating_signal(self, input_tensor, out_size, batch_norm=True):
-        """
-        resize the down layer feature map into the same dimension as the up layer feature map
+        """Resize the down layer feature map into the same dimension as the up
+            layer feature map
         using 1x1 conv
-        :return: the gating feature map with the same dimension of the up layer feature map
+        :return: the gating feature map with the same dimension of the up
+            layer feature map.
         """
         # first layer
         x = self.Conv(
@@ -337,7 +335,8 @@ class UNet(ModelMagia):
         theta_x = self.Conv(inter_shape, 2, strides=2, padding="same")(x)  # 16
         shape_theta_x = K.int_shape(theta_x)
 
-        # Getting the gating signal to the same number of filters as the inter_shape
+        # Getting the gating signal to the same number of filters
+        #   as the inter_shape
         phi_g = self.Conv(inter_shape, 1, padding="same")(gating)
         upsample_g = self.ConvTranspose(
             inter_shape,

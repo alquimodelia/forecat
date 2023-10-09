@@ -30,7 +30,7 @@ def moving_mean_with_step(prediction, timesteps, skip_step=1):
     if not skip_step:
         skip_step = 1
 
-    for i in range(timesteps * skip_step):
+    for _i in range(timesteps * skip_step):
         prediction = np.vstack([prediction, np.full(timesteps, np.nan)])
 
     df = pd.DataFrame(prediction)
@@ -56,7 +56,7 @@ def moving_mean_predictions(prediction, skip_step=1):
             prediction = prediction[:, :, 0]
 
     moving_mean_stack = None
-    for i in range(classes):
+    for _i in range(classes):
         moving_mean = moving_mean_with_step(prediction, timesteps, skip_step)
         if not moving_mean_stack:
             moving_mean_stack = moving_mean
