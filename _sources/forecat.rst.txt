@@ -1,0 +1,37 @@
+forecat package
+===============
+
+Submodules
+----------
+
+forecat.archs module
+--------------------
+
+.. automodule:: forecat.archs
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+forecat.unet module
+-------------------
+
+.. automodule:: forecat.unet
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+forecat.utils module
+--------------------
+
+.. automodule:: forecat.utils
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: forecat
+   :members:
+   :undoc-members:
+   :show-inheritance:

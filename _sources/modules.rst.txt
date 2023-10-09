@@ -1,0 +1,7 @@
+forecat
+=======
+
+.. toctree::
+   :maxdepth: 4
+
+   forecat
