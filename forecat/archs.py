@@ -531,7 +531,7 @@ class CNNArch(ForeArch):
         output_layer = self.get_output_layer(output_layer, **output_layer_args)
         return output_layer
 
-    def architeture(self, block_repetition=1, multitail=False):
+    def architeture(self, block_repetition=1, multitail=False, conv_args=None):
         """Defines the architecture of the model.
 
         This method defines the architecture of the model, which includes an input layer, an architecture block, interpretation layers, and an output layer. The architecture block can be repeated multiple times as specified by the `block_repetition` parameter. The `multitail` parameter determines whether to use a parallel repetition of the interpretation layers.
@@ -549,16 +549,32 @@ class CNNArch(ForeArch):
             Keras model with the defined architecture
         """
         input_layer = self.get_input_layer(flatten_input=False)
+        block_args =  {"conv_args":conv_args}
         if block_repetition == 1:
-            output_layer = self.arch_block(input_layer)
+            output_layer = self.arch_block(input_layer, conv_args=conv_args)
         elif block_repetition > 1:
-            num_filters = [
-                {"conv_args": {"filters": 2**f}}
-                for f in np.arange(block_repetition)
-            ]
-            num_filters.reverse()
+            if conv_args:
+                if "filters" not in conv_args:
+                    num_filters = [
+                        {"conv_args": {"filters": 2**f}}
+                        for f in np.arange(block_repetition)
+                    ]
+                    num_filters.reverse()
+                else:
+                    num_filters = conv_args["filters"]
+                    if not isinstance(num_filters, list):
+                        num_filters = [
+                            {"conv_args": {"filters": int(num_filters*(2**f))}}
+                            for f in np.arange(block_repetition)
+                        ]
+                        num_filters.reverse()
+                block_args = num_filters
+            else:
+                conv_args = {}
+                block_args["conv_args"]=conv_args
             output_layer = self.stacked_repetition(
-                input_layer, block_repetition
+                input_layer, block_repetition,
+                block_args=block_args
             )
         output_layer = Flatten()(output_layer)
 
