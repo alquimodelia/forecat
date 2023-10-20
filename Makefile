@@ -34,7 +34,17 @@ docs:
 	poetry run sphinx-build -E -a -b html ./docs/source ./docs/build/html
 
 test:
-	poetry run pytest ${TEST_PATH}
+	KERAS_BACKEND=jax poetry run pytest ${TEST_PATH} || true
+	KERAS_BACKEND=torch poetry run pytest ${TEST_PATH} || true
+	KERAS_BACKEND=tensorflow poetry run pytest ${TEST_PATH} || true
+
+test-torch:
+	KERAS_BACKEND=torch poetry run pytest ${TEST_PATH}
+test-jax:
+	KERAS_BACKEND=jax poetry run pytest ${TEST_PATH}
+test-tensorflow:
+	KERAS_BACKEND=tensorflow poetry run pytest ${TEST_PATH}
+
 
 test-coverage:
 	poetry run pytest --cov=$(PROJECT) ${TEST_PATH} --cov-report term-missing

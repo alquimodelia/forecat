@@ -1,54 +1,62 @@
 
-
+import keras_core as keras
+import numpy as np
 import pytest
 
-from forecat.archs import CNNArch, DenseArch, EncoderDecoder, LSTMArch
+import forecat
+
+# The model structures
+model_structures = {
+    "VanillaCNN": {"arch": "CNNArch"},
+    "VanillaDense": {"arch": "DenseArch"},
+    "VanillaLSTM": {"arch": "LSTMArch"},
+    "StackedCNN": {"arch": "CNNArch", "architecture_args": {"block_repetition": 2}},
+    "StackedLSTM": {"arch": "LSTMArch", "architecture_args": {"block_repetition": 2}},
+    "UNET": {"arch": "UNETArch"},
+    "EncoderDecoder": {"arch": "EncoderDecoder"}
+}
+
+# The input arguments
+input_args = {
+    "X_timeseries": 168,
+    "Y_timeseries": 24,
+    "n_features_train": 18,
+    "n_features_predict": 1,
+}
+
+# The compile arguments
+compile_args = {
+    "optimizer": "adam",
+    "loss": "mse",
+}
 
 
-def make_model_see_summary():
-    X_timeseries = 168
-    Y_timeseries = 24
-    n_features_train = 18
-    n_features_predict = 1
+# The fixture for model name
+@pytest.fixture(params=model_structures.keys())
+def model_name(request):
+    return request.param
 
-    input_args = {
-        "X_timeseries": X_timeseries,
-        "Y_timeseries": Y_timeseries,
-        "n_features_train": n_features_train,
-        "n_features_predict": n_features_predict,
-    }
+# The test function
+def test_model(model_name):
+    # Clear the session
+    keras.backend.clear_session()
 
-    foreDense = DenseArch(**input_args)
-    foreDense_model = foreDense.architeture()
-    foreDense_model.summary()
+    # Get the model configuration
+    model_conf = model_structures[model_name]
+    architecture_args = model_conf.get("architecture_args", {})
 
-    foreLSTM = LSTMArch(**input_args)
-    foreLSTM_model = foreLSTM.architeture()
-    foreLSTM_model.summary()
+    # Create the architecture and model
+    architecture_class = getattr(forecat.archs, model_conf["arch"])
+    forearch = architecture_class(**input_args)
+    foremodel = forearch.architecture(**architecture_args)
+    foremodel.summary()
+    foremodel.compile(**compile_args)
 
-    foreCNN = CNNArch(**input_args)
-    foreCNN_model = foreCNN.architeture()
-    foreCNN_model.summary()
+    # Create the test data
+    input_shape = (2, *foremodel.input_shape[1:])
+    output_shape = (2, *foremodel.output_shape[1:])
+    X_test = np.ones(input_shape)
+    Y_test = np.ones(output_shape)
 
-    foreStackedCNN = CNNArch(**input_args)
-    foreStackedCNN_model = foreStackedCNN.architeture(block_repetition=2)
-    foreStackedCNN_model.summary()
-
-    foreStackedLSTM = LSTMArch(**input_args)
-    foreStackedLSTM_model = foreStackedLSTM.architeture(block_repetition=2)
-    foreStackedLSTM_model.summary()
-
-    foreEncoderDecoder = EncoderDecoder(**input_args)
-    foreEncoderDecoder_model = foreEncoderDecoder.architeture()
-    foreEncoderDecoder_model.summary()
-
-
-@pytest.mark.parametrize("backend", ["tensorflow", "jax", "torch"])
-def test_model_making(backend):
-
-    #os.environ["KERAS_BACKEND"] = backend
-    #from forecat.archs import CNNArch, DenseArch, 
-    #   LSTMArch, UNETArch, EncoderDecoder
-
-    # TODO: try to test with all the different backedn
-    make_model_see_summary()    
+    # Fit the model
+    foremodel.fit(X_test, Y_test)
