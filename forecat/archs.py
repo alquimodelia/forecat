@@ -55,6 +55,8 @@ class ForeArch:
         dropout=0.35,
         activation_end="relu",
         activation_middle="relu",
+        kernel_initializer="he_normal"
+
     ):
         self.X_timeseries = X_timeseries
         self.Y_timeseries = Y_timeseries
@@ -66,6 +68,7 @@ class ForeArch:
         self.dropout_value = dropout
         self.activation_end = activation_end
         self.activation_middle = activation_middle
+        self.kernel_initializer = kernel_initializer
 
     def set_input_shape(self):
         """Sets the input shape."""
@@ -243,14 +246,14 @@ class ForeArch:
 
         return outputs
 
-    def architeture(self):
+    def architecture(self):
         pass
 
 
 class DenseArch(ForeArch):
     """This architecture uses a dense layer to solve the problem.
 
-    This class inherits from the `ForeArch` class and overrides the `arch_block` and `architeture` methods to implement a dense layer architecture.
+    This class inherits from the `ForeArch` class and overrides the `arch_block` and `architecture` methods to implement a dense layer architecture.
     """
 
     def arch_block(self, x, dense_args=None, filter_enlarger=4, filter_limit=200):
@@ -274,14 +277,19 @@ class DenseArch(ForeArch):
         x: keras.layer
             Output layer
         """
+        default_dense_args = {"kernel_initializer":self.kernel_initializer}
         if dense_args is None:
-            dense_args = {}
+            dense_args = default_dense_args
         if isinstance(dense_args, list):
-            dense_args1 = dense_args[0]
-            dense_args2 = dense_args[1]
+            dense_args1 = default_dense_args
+            dense_args2 = default_dense_args
+            dense_args1.update(dense_args[0])
+            dense_args2.update(dense_args[1])
         else:
-            dense_args1 = dense_args
-            dense_args2 = dense_args
+            default_dense_args.update(dense_args)
+            dense_args1 = default_dense_args
+            dense_args2 = default_dense_args
+
         filters_out = dense_args2.pop("filters", None)
         if filters_out is None:
             filters_out = self.dense_out
@@ -297,7 +305,7 @@ class DenseArch(ForeArch):
 
         return x
 
-    def architeture(self):
+    def architecture(self):
         """Defines the architecture of the model.
 
         This method defines the architecture of the model, which includes an input layer, an architecture block, and an output layer.
@@ -372,7 +380,7 @@ class LSTMArch(ForeArch):
         output_layer = self.get_output_layer(output_layer)
         return output_layer
 
-    def architeture(self, block_repetition=1, dense_args=None, block_args=None):
+    def architecture(self, block_repetition=1, dense_args=None, block_args=None):
         '''Defines the architecture of the model.
 
         This method defines the architecture of the model, which includes an input layer, an architecture block, interpretation layers, and an output layer.
@@ -410,7 +418,7 @@ class LSTMArch(ForeArch):
 class CNNArch(ForeArch):
     """This architecture uses a convolutional neural network (CNN) layer to solve the problem.
 
-    This class inherits from the `ForeArch` class and overrides the `arch_block`, `interpretation_layers`, and `architeture` methods to implement a CNN layer architecture.
+    This class inherits from the `ForeArch` class and overrides the `arch_block`, `interpretation_layers`, and `architecture` methods to implement a CNN layer architecture.
     """
 
     def __init__(self, conv_dimension="1D", **kwargs):
@@ -531,7 +539,7 @@ class CNNArch(ForeArch):
         output_layer = self.get_output_layer(output_layer, **output_layer_args)
         return output_layer
 
-    def architeture(self, block_repetition=1, multitail=False, conv_args=None):
+    def architecture(self, block_repetition=1, multitail=False, conv_args=None):
         """Defines the architecture of the model.
 
         This method defines the architecture of the model, which includes an input layer, an architecture block, interpretation layers, and an output layer. The architecture block can be repeated multiple times as specified by the `block_repetition` parameter. The `multitail` parameter determines whether to use a parallel repetition of the interpretation layers.
@@ -599,7 +607,7 @@ class CNNArch(ForeArch):
 
 
 class UNETArch(ForeArch):
-    """This architeture just follow the idea of a dense layers to solve the problem."""
+    """This architecture just follow the idea of a dense layers to solve the problem."""
 
     def __init__(self, conv_dimension="1D", **kwargs):
         self.set_dimension_layer(conv_dimension)
@@ -619,7 +627,7 @@ class UNETArch(ForeArch):
             self.Conv = Conv3D
             self.Dropout = Dropout
 
-    def architeture(
+    def architecture(
         self,
         conv_args=None,
     ):

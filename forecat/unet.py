@@ -4,10 +4,6 @@
 from functools import cached_property
 from typing import Any, Dict
 
-# Note that keras_core should only be imported after the backend
-# has been configured. The backend cannot be changed once the
-# package is imported.
-import keras.backend as K
 import keras_core as keras
 from keras_core import ops
 from keras_core.layers import (
@@ -24,6 +20,7 @@ from keras_core.layers import (
     UpSampling1D,
     concatenate,
 )
+from keras_core.src.legacy.backend import int_shape
 
 
 def count_number_divisions(size: int, count: int, by: int = 2, limit: int = 2):
@@ -328,12 +325,12 @@ class UNet(ModelMagia):
         return x
 
     def attention_block(self, x, gating, inter_shape):
-        shape_x = K.int_shape(x)
-        shape_g = K.int_shape(gating)
+        shape_x = int_shape(x)
+        shape_g = int_shape(gating)
 
         # Getting the x signal to the same shape as the gating signal
         theta_x = self.Conv(inter_shape, 2, strides=2, padding="same")(x)  # 16
-        shape_theta_x = K.int_shape(theta_x)
+        shape_theta_x = int_shape(theta_x)
 
         # Getting the gating signal to the same number of filters
         #   as the inter_shape
@@ -351,7 +348,7 @@ class UNet(ModelMagia):
         act_xg = Activation("relu")(concat_xg)
         psi = self.Conv(1, 1, padding="same")(act_xg)
         sigmoid_xg = Activation("sigmoid")(psi)
-        shape_sigmoid = K.int_shape(sigmoid_xg)
+        shape_sigmoid = int_shape(sigmoid_xg)
         sss = (shape_x[1] // shape_sigmoid[1], shape_x[2] // shape_sigmoid[2])
         upsample_psi = self.UpSampling(size=sss[0])(sigmoid_xg)  # 32
         upsample_psi = repeat_elem(upsample_psi, shape_x[2])
