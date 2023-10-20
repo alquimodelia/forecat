@@ -2,35 +2,14 @@
 
 Forecat is a Python package that provides a Keras-based forecast model builder.
 
-## Timeseries Forecasting 
+[![Python](https://img.shields.io/badge/python-3.6%20%7C%203.7%20%7C%203.8%20%7C%203.9-blue)](https://www.python.org/)
+[![Keras](https://img.shields.io/badge/keras-2.4.3-blue)](https://keras.io/)
 
-## Making Predictions with Keras Models
-
-Forecat allows you to make predictions using the trained models. Once a model is trained, you can use the `model.predict()` method to make predictions on new data instances. For example, you can pass a new input data `X` to the trained model and get the predicted output `yhat` using the following code:
-
-
-Forecat also supports saving and loading trained models using the `SavedModel` format or the HDF5 format, which allows you to reuse the models for future predictions[[2]](https://stackoverflow.com/questions/31914161/how-to-convert-rmd-into-md-in-r-studio)[[8]](https://docs.readme.com/rdmd/docs).
-
-## Keras Model Components
-
-When working with Keras models, it's important to understand the different components that make up a model:
-
-- Architecture/Configuration: Specifies the layers and their connectivity in the model.
-- Weights: The trainable parameters in the model that influence the output.
-- Optimizer: The optimizer/loss function used to minimize the loss during training.
-- Set of Losses and Metrics: The losses and metrics that are compiled with the model using the `model.compile()` method.
-
-Forecat provides a high-level interface to create, configure, and train models, taking care of these components behind the scenes[[2]](https://stackoverflow.com/questions/31914161/how-to-convert-rmd-into-md-in-r-studio).
 
 ## Usage
 
 To use Forecat, follow these steps:
 
-1. Install Poetry for dependency management.
-2. Install Forecat and its dependencies using Poetry: `poetry install`.
-3. Use the `poetry run` command to run your scripts: `poetry run python your_script.py`.
-4. Use the provided API to build and train forecast models using Keras and TensorFlow.
-5. Make predictions using the trained models.
 
 ## Contribution
 
