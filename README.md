@@ -24,36 +24,36 @@ To change backend change the ```KERAS-BACKEND``` enviromental variable. Follow [
 To get an arquiteture you only need to have a simple configuration and call the module:
 
 ```python
-    import forecat
+import forecat
 
-    # The input arguments
-    input_args = {
-        "X_timeseries": 168,
-        "Y_timeseries": 24,
-        "n_features_train": 18,
-        "n_features_predict": 1,
-    }
-    # This is make a model with shapes:
-        # input_shape = (N, 168, 18)
-        # output_shape = (N, 24, 1)
+# The input arguments
+input_args = {
+    "X_timeseries": 168,
+    "Y_timeseries": 24,
+    "n_features_train": 18,
+    "n_features_predict": 1,
+}
+# This is make a model with shapes:
+    # input_shape = (N, 168, 18)
+    # output_shape = (N, 24, 1)
 
-    forearch = forecat.CNNArch(**input_args)
+forearch = forecat.CNNArch(**input_args)
 
-    # Now for Vanilla and Stacked CNN:
-    architecture_args = {}
-    VanillaCNN = forearch.architecture(**architecture_args)
+# Now for Vanilla and Stacked CNN:
+architecture_args = {}
+VanillaCNN = forearch.architecture(**architecture_args)
 
-    architecture_args = {"block_repetition": 2}
-    StackedCNN = forearch.architecture(**architecture_args)
+architecture_args = {"block_repetition": 2}
+StackedCNN = forearch.architecture(**architecture_args)
 
-    # Keras Models ready to use:
-    VanillaCNN.summary()
-    StackedCNN.summary()
+# Keras Models ready to use:
+VanillaCNN.summary()
+StackedCNN.summary()
 
 
 ```
 
-## [Contribution](CONTRIBUTING)
+## [Contribution](CONTRIBUTING.md)
 
 Contributions to Forecat are welcome! If you find any issues or have suggestions for improvement, please feel free to contribute. Make sure to update tests as appropriate and follow the contribution guidelines.
 
