@@ -30,8 +30,12 @@ If you're new to open-source contribution or you're unsure how to get started, y
    ```bash
     git checkout -b feature/your-feature-name
     ```
-4. Make your changes, write code, and/or documentation.
-5. Ensure your code follows the project's coding standards and conventions. You can run to check for linting:
+4. Install the dev dependencies.
+   ```bash
+    make init-dev
+    ```
+5. Make your changes, write code, and/or documentation.
+6. Ensure your code follows the project's coding standards and conventions. You can run to check for linting:
    ```bash
     make lint-check
     ```
@@ -41,17 +45,17 @@ If you're new to open-source contribution or you're unsure how to get started, y
     ```
     Still some things might have to be checked again.
 
-6. Test your changes thoroughly to verify they work as intended. You can also run
+7. Test your changes thoroughly to verify they work as intended. You can also run
 
    ```bash
     make test
     ```
-7. Commit your changes and push them to your forked repository.
+8. Commit your changes and push them to your forked repository.
    ```bash
     git commit -m "Add your detailed commit message here"
     git push origin feature/your-feature-name
     ```
-8. Create a Pull Request from your fork to the Forecat repository. Be sure to describe your changes in detail, including references to any relevant issues.
+9. Create a Pull Request from your fork to the Forecat repository. Be sure to describe your changes in detail, including references to any relevant issues.
 Be sure to have also tests if you write new code. And make sure the linting is correct.
 
 ## Code of Conduct
