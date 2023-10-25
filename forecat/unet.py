@@ -24,17 +24,24 @@ from keras_core.src.legacy.backend import int_shape
 
 
 def count_number_divisions(size: int, count: int, by: int = 2, limit: int = 2):
-    """Count the number of possible steps.
+    """
+    Count the number of possible steps.
 
     Parameters
     ----------
-        size : int
-            Image size (considering it is a square).
-        count : int
-            Input must be 0.
-        by : int
-        limit : int
-            Size of last filter (smaller).
+    size : int
+        Image size (considering it is a square).
+    count : int
+        Input must be 0.
+    by : int, optional
+        The factor by which the size is divided. Default is 2.
+    limit : int, optional
+        Size of last filter (smaller). Default is 2.
+
+    Returns
+    -------
+    int
+        The number of possible steps.
     """
     if size >= limit:
         if size % 2 == 0:
@@ -44,6 +51,7 @@ def count_number_divisions(size: int, count: int, by: int = 2, limit: int = 2):
     else:
         count = count - 1
     return count
+
 
 
 class ModelMagia(keras.Model):
@@ -305,11 +313,25 @@ class UNet(ModelMagia):
         return unet_output
 
     def gating_signal(self, input_tensor, out_size, batch_norm=True):
-        """Resize the down layer feature map into the same dimension as the up
-            layer feature map
-        using 1x1 conv
-        :return: the gating feature map with the same dimension of the up
-            layer feature map.
+        """
+        Resize the down layer feature map into the same dimension as the up
+        layer feature map using 1x1 conv.
+
+        Parameters
+        ----------
+        input_tensor: keras.layer
+            The input layer to be resized.
+        out_size: int
+            The size of the output layer.
+        batch_norm: bool, optional
+            If True, applies batch normalization to the input layer.
+            Default is True.
+
+        Returns
+        -------
+        keras.layer
+            The gating feature map with the same dimension as the up layer
+            feature map.
         """
         # first layer
         x = self.Conv(

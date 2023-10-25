@@ -4,6 +4,15 @@ version = "0.0.2"
 description = "Keras based Forescast model builder"
 authors = ["João Santos <jotaflame@gmail.com>"]
 readme = "README.md"
+license = "LICENSE"
+homepage = "https://github.com/alquimodelia/forecat"
+repository = "https://github.com/alquimodelia/forecat"
+documentation = "https://alquimodelia.github.io/forecat/"
+keywords = ["python", "machine learning", "forecast", "model builder"]
+
+[tool.poetry.urls]
+"Bug Tracker" = "https://github.com/alquimodelia/forecat/issues"
+"Source Code" = "https://github.com/alquimodelia/forecat"
 
 [tool.poetry.dependencies]
 python = "^3.9"
