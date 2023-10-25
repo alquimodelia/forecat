@@ -128,7 +128,7 @@ class ForeArch:
         Returns:
         --------
         input_layer: keras.layer
-            Input layer
+            Input layer.
         """
         input_layer = Input(self.input_shape)
         self.input_layer = input_layer
