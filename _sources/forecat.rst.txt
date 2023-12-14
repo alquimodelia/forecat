@@ -12,6 +12,14 @@ forecat.archs module
    :undoc-members:
    :show-inheritance:
 
+forecat.transformer module
+--------------------------
+
+.. automodule:: forecat.transformer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 forecat.unet module
 -------------------
 
