@@ -11,6 +11,7 @@ model_structures = {
     "VanillaDense": {"arch": "DenseArch"},
     "VanillaLSTM": {"arch": "LSTMArch"},
     "StackedCNN": {"arch": "CNNArch", "architecture_args": {"block_repetition": 2}},
+    "StackedDense": {"arch": "DenseArch", "architecture_args": {"block_repetition": 2}},
     "StackedLSTM": {"arch": "LSTMArch", "architecture_args": {"block_repetition": 2}},
     "UNET": {"arch": "UNETArch"},
     "EncoderDecoder": {"arch": "EncoderDecoder"}

@@ -29,8 +29,7 @@ init-docs: startup
 	poetry install --with 'docs'
 
 docs:
-	rm -rf docs
-	poetry run sphinx-quickstart -q --ext-autodoc --sep --project $(PROJECT) --author $(AUTHOR) docs
+	if ! [ -d "./docs" ]; then poetry run sphinx-quickstart -q --ext-autodoc --sep --project $(PROJECT) --author $(AUTHOR) docs; fi
 	poetry run sphinx-apidoc -f -o ./docs/source ./$(PROJECT)
 	poetry run sphinx-build -E -a -b html ./docs/source ./docs/build/html
 
