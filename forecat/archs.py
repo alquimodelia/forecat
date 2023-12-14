@@ -796,3 +796,14 @@ class EncoderDecoder(LSTMArch):
         x = self.get_output_layer(x)
 
         return x
+
+
+class Transformer(ForeArch):
+
+    def architecture(self):
+        from forecat.transformer import create_vit_classifier
+        input_layer = self.get_input_layer()
+
+        logits =create_vit_classifier(input_layer, augmentation=False, projection_dim=self.n_features_train)
+        model = Model(inputs=self.input_layer, outputs=logits)
+        return model
