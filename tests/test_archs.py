@@ -1,4 +1,3 @@
-
 import keras_core as keras
 import numpy as np
 import pytest
@@ -10,10 +9,17 @@ model_structures = {
     "VanillaCNN": {"arch": "CNNArch"},
     "VanillaDense": {"arch": "DenseArch"},
     "VanillaLSTM": {"arch": "LSTMArch"},
-    "StackedCNN": {"arch": "CNNArch", "architecture_args": {"block_repetition": 2}},
-    "StackedLSTM": {"arch": "LSTMArch", "architecture_args": {"block_repetition": 2}},
+    "StackedCNN": {
+        "arch": "CNNArch",
+        "architecture_args": {"block_repetition": 2},
+    },
+    "StackedLSTM": {
+        "arch": "LSTMArch",
+        "architecture_args": {"block_repetition": 2},
+    },
     "UNET": {"arch": "UNETArch"},
-    "EncoderDecoder": {"arch": "EncoderDecoder"}
+    "EncoderDecoder": {"arch": "EncoderDecoder"},
+    "Transformer": {"arch": "Transformer"},
 }
 
 # The input arguments
@@ -35,6 +41,7 @@ compile_args = {
 @pytest.fixture(params=model_structures.keys())
 def model_name(request):
     return request.param
+
 
 # The test function
 def test_model(model_name):
