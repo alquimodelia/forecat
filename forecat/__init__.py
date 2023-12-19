@@ -7,4 +7,11 @@ from forecat.archs import (
     UNETArch,
 )
 
-__all__ = ["CNNArch", "DenseArch", "LSTMArch", "UNETArch", "EncoderDecoder", "Transformer"]
+__all__ = [
+    "CNNArch",
+    "DenseArch",
+    "LSTMArch",
+    "UNETArch",
+    "EncoderDecoder",
+    "Transformer",
+]

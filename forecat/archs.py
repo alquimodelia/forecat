@@ -57,8 +57,7 @@ class ForeArch:
         dropout=0.35,
         activation_end="relu",
         activation_middle="relu",
-        kernel_initializer="he_normal"
-
+        kernel_initializer="he_normal",
     ):
         self.X_timeseries = X_timeseries
         self.Y_timeseries = Y_timeseries
@@ -88,7 +87,7 @@ class ForeArch:
         kernel,
         layer_shape,
         data_format="NHWC",  # TODO: mudar pa channels_first?
-        kernel_dimension=-2,  
+        kernel_dimension=-2,
         # based on data format # ASsumir que isto esta sempre certo
     ):
         if isinstance(kernel_dimension, int):
@@ -227,12 +226,9 @@ class ForeArch:
         for i in range(block_repetition):
             # If it comes as a list, get the index
             if isinstance(input_layers, list):
-                x = ops.gather(
-                    input_layers,
-                    indices=i,
-                    axis=dim_split)
-                #x = K.gather(input_layers, indices=i#, axis=dim_split
-                #)
+                x = ops.gather(input_layers, indices=i, axis=dim_split)
+                # x = K.gather(input_layers, indices=i#, axis=dim_split
+                # )
                 if reshape_into_original_dim_size:
                     in_shape = (*x.shape[1:], 1)
                     x = Reshape(in_shape)(x)
@@ -258,7 +254,9 @@ class DenseArch(ForeArch):
     This class inherits from the `ForeArch` class and overrides the `arch_block` and `architecture` methods to implement a dense layer architecture.
     """
 
-    def arch_block(self, x, dense_args=None, filter_enlarger=4, filter_limit=200):
+    def arch_block(
+        self, x, dense_args=None, filter_enlarger=4, filter_limit=200
+    ):
         """Defines the architecture block for the dense layer.
 
         This method defines a block of operations that includes two dense layers. The number of filters in the dense layers is determined by the `filter_enlarger` and `filter_limit` parameters.
@@ -279,8 +277,8 @@ class DenseArch(ForeArch):
         x: keras.layer
             Output layer
         """
-        default_dense_args = {"kernel_initializer":self.kernel_initializer}
-        units_in=None
+        default_dense_args = {"kernel_initializer": self.kernel_initializer}
+        units_in = None
         if dense_args is None:
             dense_args = default_dense_args
         if isinstance(dense_args, list):
@@ -298,7 +296,12 @@ class DenseArch(ForeArch):
         if filters_out is None:
             filters_out = self.dense_out
         if units_in is None:
-            units_in = dense_args1.pop("units", stays_if_not_smaller(filters_out * filter_enlarger, filter_limit))
+            units_in = dense_args1.pop(
+                "units",
+                stays_if_not_smaller(
+                    filters_out * filter_enlarger, filter_limit
+                ),
+            )
 
         x = Dense(
             units_in,
@@ -323,20 +326,20 @@ class DenseArch(ForeArch):
         """
         input_layer = self.get_input_layer(flatten_input=True)
         output_layer = self.arch_block(input_layer)
-        block_args =  {"dense_args":dense_args}
+        block_args = {"dense_args": dense_args}
         if block_repetition == 1:
             output_layer = self.arch_block(input_layer, dense_args=dense_args)
         elif block_repetition > 1:
             if not dense_args:
                 dense_args = {}
-                block_args["dense_args"]=dense_args
+                block_args["dense_args"] = dense_args
             if "units" not in dense_args:
                 num_filters = self.dense_out
             else:
                 num_filters = dense_args["units"]
             if not isinstance(num_filters, list):
                 num_filters = [
-                    {"dense_args": {"units": int(num_filters*(4**f))}}
+                    {"dense_args": {"units": int(num_filters * (4**f))}}
                     for f in np.arange(block_repetition)
                 ]
                 num_filters.reverse()
@@ -349,27 +352,28 @@ class DenseArch(ForeArch):
                         if unit1 > un2_last:
                             rat = math.sqrt(un2_last / unit2)
                             unit1 = int(unit2 * rat)
-                            num_filters[i]["dense_args"]=[{"units":unit1},{"units":unit2}]
+                            num_filters[i]["dense_args"] = [
+                                {"units": unit1},
+                                {"units": unit2},
+                            ]
                     un2_last = unit2
 
             block_args = num_filters
             output_layer = self.stacked_repetition(
-                input_layer, block_repetition,
-                block_args=block_args
+                input_layer, block_repetition, block_args=block_args
             )
-
-
-
-
 
         output_layer = self.get_output_layer(output_layer)
 
         return Model(inputs=self.input_layer, outputs=output_layer, **kwargs)
 
+
 class LSTMArch(ForeArch):
     """This class is LSTM layer architecture."""
 
-    def arch_block(self, x, lstm_args=None, filter_enlarger=4, filter_limit=200):
+    def arch_block(
+        self, x, lstm_args=None, filter_enlarger=4, filter_limit=200
+    ):
         """Defines the architecture block for the LSTM layer.
 
         This method defines a block of operations that includes an LSTM layer. The arguments for the LSTM layer are determined by the `lstm_args` parameter.
@@ -404,7 +408,9 @@ class LSTMArch(ForeArch):
         x = Dropout(self.dropout_value)(x)
         return x
 
-    def interpretation_layers(self, output_layer, dense_args=None, output_layer_args=None):
+    def interpretation_layers(
+        self, output_layer, dense_args=None, output_layer_args=None
+    ):
         """Defines the interpretation layers for the model.
 
         This method defines a block of operations that includes a dense layer and an output layer. The arguments for the dense layer are determined by the `dense_args` parameter.
@@ -441,8 +447,10 @@ class LSTMArch(ForeArch):
         output_layer = self.get_output_layer(output_layer, **output_layer_args)
         return output_layer
 
-    def architecture(self, block_repetition=1, dense_args=None, block_args=None, **kwargs):
-        '''Defines the architecture of the model.
+    def architecture(
+        self, block_repetition=1, dense_args=None, block_args=None, **kwargs
+    ):
+        """Defines the architecture of the model.
 
         This method defines the architecture of the model, which includes an input layer, an architecture block, interpretation layers, and an output layer.
 
@@ -459,7 +467,7 @@ class LSTMArch(ForeArch):
         --------
         model: keras.Model
             Keras model with the defined architecture
-        '''
+        """
         if dense_args is None:
             dense_args = {"activation": "softplus"}
         input_layer = self.get_input_layer(flatten_input=False)
@@ -475,7 +483,6 @@ class LSTMArch(ForeArch):
         return Model(inputs=self.input_layer, outputs=output_layer, **kwargs)
 
 
-
 class CNNArch(ForeArch):
     """This architecture uses a convolutional neural network (CNN) layer to solve the problem.
 
@@ -483,7 +490,7 @@ class CNNArch(ForeArch):
     """
 
     def __init__(self, conv_dimension="1D", **kwargs):
-        '''Initializes the CNNArch class.
+        """Initializes the CNNArch class.
 
         Parameters:
         -----------
@@ -491,12 +498,12 @@ class CNNArch(ForeArch):
             Dimension of the convolutional layer. It can be "1D", "2D", or "3D". Default is "1D".
         **kwargs: dict
             Additional keyword arguments for the `ForeArch` class.
-        '''
+        """
         self.set_dimension_layer(conv_dimension)
         super().__init__(**kwargs)
 
     def set_dimension_layer(self, conv_dimension):
-        '''Sets the dimension of the convolutional layer.
+        """Sets the dimension of the convolutional layer.
 
         This method sets the convolutional layer, max pooling layer, and dropout layer based on the dimension of the convolutional layer.
 
@@ -504,7 +511,7 @@ class CNNArch(ForeArch):
         -----------
         conv_dimension: str
             Dimension of the convolutional layer. It can be "1D", "2D", or "3D".
-        '''
+        """
         if conv_dimension == "1D":
             self.MaxPooling = MaxPooling1D
             self.Conv = Conv1D
@@ -518,8 +525,15 @@ class CNNArch(ForeArch):
             self.Conv = Conv3D
             self.Dropout = Dropout
 
-    def arch_block(self, x, conv_args=None, max_pool_args=None, filter_enlarger=4, filter_limit=200):
-        '''Defines the architecture block for the CNN layer.
+    def arch_block(
+        self,
+        x,
+        conv_args=None,
+        max_pool_args=None,
+        filter_enlarger=4,
+        filter_limit=200,
+    ):
+        """Defines the architecture block for the CNN layer.
 
         This method defines a block of operations that includes a convolutional layer, a max pooling layer, and a dropout layer.
 
@@ -540,7 +554,7 @@ class CNNArch(ForeArch):
         --------
         x: keras.layer
             Output layer
-        '''
+        """
         if max_pool_args is None:
             max_pool_args = {"pool_size": 2}
         if conv_args is None:
@@ -563,7 +577,9 @@ class CNNArch(ForeArch):
 
         return x
 
-    def interpretation_layers(self, output_layer, dense_args=None, output_layer_args=None):
+    def interpretation_layers(
+        self, output_layer, dense_args=None, output_layer_args=None
+    ):
         """Defines the interpretation layers for the model.
 
         This method defines a block of operations that includes a dense layer and an output layer. The arguments for the dense layer are determined by the `dense_args` parameter.
@@ -600,7 +616,9 @@ class CNNArch(ForeArch):
         output_layer = self.get_output_layer(output_layer, **output_layer_args)
         return output_layer
 
-    def architecture(self, block_repetition=1, multitail=False, conv_args=None, **kwargs):
+    def architecture(
+        self, block_repetition=1, multitail=False, conv_args=None, **kwargs
+    ):
         """Defines the architecture of the model.
 
         This method defines the architecture of the model, which includes an input layer, an architecture block, interpretation layers, and an output layer. The architecture block can be repeated multiple times as specified by the `block_repetition` parameter. The `multitail` parameter determines whether to use a parallel repetition of the interpretation layers.
@@ -618,7 +636,7 @@ class CNNArch(ForeArch):
             Keras model with the defined architecture
         """
         input_layer = self.get_input_layer(flatten_input=False)
-        block_args =  {"conv_args":conv_args}
+        block_args = {"conv_args": conv_args}
         if block_repetition == 1:
             output_layer = self.arch_block(input_layer, conv_args=conv_args)
         elif block_repetition > 1:
@@ -633,17 +651,20 @@ class CNNArch(ForeArch):
                     num_filters = conv_args["filters"]
                     if not isinstance(num_filters, list):
                         num_filters = [
-                            {"conv_args": {"filters": int(num_filters*(2**f))}}
+                            {
+                                "conv_args": {
+                                    "filters": int(num_filters * (2**f))
+                                }
+                            }
                             for f in np.arange(block_repetition)
                         ]
                         num_filters.reverse()
                 block_args = num_filters
             else:
                 conv_args = {}
-                block_args["conv_args"]=conv_args
+                block_args["conv_args"] = conv_args
             output_layer = self.stacked_repetition(
-                input_layer, block_repetition,
-                block_args=block_args
+                input_layer, block_repetition, block_args=block_args
             )
         output_layer = Flatten()(output_layer)
 
@@ -688,10 +709,7 @@ class UNETArch(ForeArch):
             self.Conv = Conv3D
             self.Dropout = Dropout
 
-    def architecture(
-        self,
-        conv_args=None, **kwargs
-    ):
+    def architecture(self, conv_args=None, **kwargs):
         if conv_args is None:
             conv_args = {"filters": 16}
         model_UNET = AttResUNet1D(
@@ -705,7 +723,9 @@ class UNETArch(ForeArch):
         )
 
         x = Model(
-            inputs=model_UNET.input_layer, outputs=model_UNET.output_layer, **kwargs
+            inputs=model_UNET.input_layer,
+            outputs=model_UNET.output_layer,
+            **kwargs,
         )
 
         return x
@@ -755,13 +775,13 @@ class EncoderDecoder(LSTMArch):
 
         # Apply LSTM layer (Encoder)
         x = LSTM(**default_lstm_args)(x)
-        
+
         # RepeatVector layer
         x = RepeatVector(self.Y_timeseries)(x)
-        
+
         # Apply LSTM layer (Decoder)
         x = LSTM(**default_lstm_args, return_sequences=True)(x)
-        
+
         # Apply Dropout layer
         x = Dropout(self.dropout_value)(x)
 
@@ -788,10 +808,10 @@ class EncoderDecoder(LSTMArch):
         dense_filters = int(self.dense_out / time_dim_size)
         # Apply TimeDistributed layer with Dense layer
         x = TimeDistributed(Dense(dense_filters, **dense_args))(x)
-        
+
         # Apply Dropout layer
         x = Dropout(self.dropout_value)(x)
-        
+
         # Apply output layer
         x = self.get_output_layer(x)
 
@@ -799,11 +819,18 @@ class EncoderDecoder(LSTMArch):
 
 
 class Transformer(ForeArch):
-
-    def architecture(self, **kwargs):
+    def architecture(self, block_repetition=1, **kwargs):
         from forecat.transformer import create_vit_classifier
+
         input_layer = self.get_input_layer()
 
-        logits =create_vit_classifier(input_layer, augmentation=False, projection_dim=self.n_features_train)
+        logits = create_vit_classifier(
+            input_layer,
+            augmentation=False,
+            projection_dim=self.n_features_train,
+            activation_end=self.activation_end,
+            activation_middle=self.activation_middle,
+            transformer_layers=block_repetition,
+        )
         model = Model(inputs=self.input_layer, outputs=logits, **kwargs)
         return model

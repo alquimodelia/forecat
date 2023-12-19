@@ -7,7 +7,7 @@ patch_size = 6  # Size of the patches to be extract from the input images
 
 data_augmentation = Sequential(
     [
-        layers.Normalization(),
+        layers.BatchNormalization(),
         layers.Resizing(image_size, image_size),
         layers.RandomFlip("horizontal"),
         layers.RandomRotation(factor=0.02),
@@ -17,9 +17,9 @@ data_augmentation = Sequential(
 )
 
 
-def mlp(x, hidden_units, dropout_rate):
+def mlp(x, hidden_units, dropout_rate, activation=gelu):
     for units in hidden_units:
-        x = layers.Dense(units, activation=gelu)(x)
+        x = layers.Dense(units, activation=activation)(x)
         x = layers.Dropout(dropout_rate)(x)
     return x
 
@@ -100,7 +100,7 @@ transformer_units = [
     projection_dim * 2,
     projection_dim,
 ]  # Size of the transformer layers
-transformer_layers = 8
+transformer_layers = 1
 mlp_head_units = [
     2048,
     1024,
@@ -109,7 +109,14 @@ mlp_head_units = [
 output_shape = (24, 1)
 
 
-def create_vit_classifier(input_layer, augmentation=False, projection_dim=18):
+def create_vit_classifier(
+    input_layer,
+    augmentation=False,
+    projection_dim=18,
+    activation_middle="relu",
+    activation_end="relu",
+    transformer_layers=1,
+):
     inputs = input_layer
     if augmentation:
         # Augment data.
@@ -125,7 +132,7 @@ def create_vit_classifier(input_layer, augmentation=False, projection_dim=18):
     # Create multiple layers of the Transformer block.
     for _ in range(transformer_layers):
         # Layer normalization 1.
-        x1 = layers.LayerNormalization(epsilon=1e-6)(encoded_patches)
+        x1 = layers.BatchNormalization()(encoded_patches)
         # Create a multi-head attention layer.
         attention_output = layers.MultiHeadAttention(
             num_heads=num_heads, key_dim=projection_dim, dropout=0.1
@@ -133,19 +140,27 @@ def create_vit_classifier(input_layer, augmentation=False, projection_dim=18):
         # Skip connection 1.
         x2 = layers.Add()([attention_output, encoded_patches])
         # Layer normalization 2.
-        x3 = layers.LayerNormalization(epsilon=1e-6)(x2)
+        x3 = layers.BatchNormalization()(x2)
         # MLP.
-        x3 = mlp(x3, hidden_units=transformer_units, dropout_rate=0.1)
+        x3 = mlp(
+            x3,
+            hidden_units=transformer_units,
+            dropout_rate=0.1,
+            activation=activation_middle,
+        )
         # Skip connection 2.
         encoded_patches = layers.Add()([x3, x2])
 
     # Create a [batch_size, projection_dim] tensor.
-    representation = layers.LayerNormalization(epsilon=1e-6)(encoded_patches)
+    representation = layers.BatchNormalization()(encoded_patches)
     representation = layers.Flatten()(representation)
     representation = layers.Dropout(0.5)(representation)
     # Add MLP.
     features = mlp(
-        representation, hidden_units=mlp_head_units, dropout_rate=0.5
+        representation,
+        hidden_units=mlp_head_units,
+        dropout_rate=0.5,
+        activation=activation_middle,
     )
     # TODO: make this a multipler of the time dimensiton (24)
     features = layers.Dense(24**2)(features)
@@ -153,7 +168,7 @@ def create_vit_classifier(input_layer, augmentation=False, projection_dim=18):
     output_shape = (24, int(features.shape[-1] / 24))
     reshape = layers.Reshape(output_shape)(features)
     # Classify outputs.
-    logits = layers.Dense(num_classes)(reshape)
+    logits = layers.Dense(num_classes, activation=activation_end)(reshape)
     # # Create the Keras model.
     # model = Model(inputs=inputs, outputs=logits)
     return logits

@@ -53,7 +53,6 @@ def count_number_divisions(size: int, count: int, by: int = 2, limit: int = 2):
     return count
 
 
-
 class ModelMagia(keras.Model):
     def model_input_shape(self):
         raise NotImplementedError
