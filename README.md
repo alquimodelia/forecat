@@ -19,7 +19,7 @@ To use Forecat, follow these steps:
 ```
 
 Since Forecat is based on keras-core you can choose which backend to use, otherwise it will default to tensorflow.
-To change backend change the ```KERAS-BACKEND``` enviromental variable. Follow [this](https://keras.io/keras_core/#configuring-your-backend).
+To change backend change the ```KERAS-BACKEND``` enviromental variable. Follow [this](https://keras.io/keras/#configuring-your-backend).
 
 To get an arquiteture you only need to have a simple configuration and call the module:
 

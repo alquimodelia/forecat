@@ -4,9 +4,9 @@
 from functools import cached_property
 from typing import Any, Dict
 
-import keras_core as keras
-from keras_core import ops
-from keras_core.layers import (
+import keras as keras
+from keras import ops
+from keras.layers import (
     Activation,
     Add,
     BatchNormalization,
@@ -20,7 +20,7 @@ from keras_core.layers import (
     UpSampling1D,
     concatenate,
 )
-from keras_core.src.legacy.backend import int_shape
+from keras.src.legacy.backend import int_shape
 
 
 def count_number_divisions(size: int, count: int, by: int = 2, limit: int = 2):

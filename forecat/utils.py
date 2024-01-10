@@ -1,4 +1,4 @@
-# Note that keras_core should only be imported after the backend
+# Note that keras should only be imported after the backend
 # has been configured. The backend cannot be changed once the
 # package is imported.
 import numpy as np

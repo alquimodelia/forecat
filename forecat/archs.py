@@ -1,8 +1,8 @@
 import math
 
 import numpy as np
-from keras_core import Model, ops
-from keras_core.layers import (
+from keras import Model, ops
+from keras.layers import (
     LSTM,
     BatchNormalization,
     Conv1D,
@@ -112,8 +112,27 @@ class ForeArch:
             kernel = kernel[0]
         return kernel
 
+    def get_time2vec(self, input_layer, time2vec_kernel_size=None,):
+        from alquitable.layers import Time2Vec
+
+        if not isinstance(time2vec_kernel_size, list):
+            time2vec_kernel_size = [time2vec_kernel_size]
+
+        timed_layers = []
+        for kernel_size in time2vec_kernel_size:
+            time2vec = Time2Vec(kernel_size=kernel_size)
+            # TODO: study this better
+            timed_layer = TimeDistributed(time2vec)(input_layer)
+            if self.dropout_value:
+                timed_layer = Dropout(self.dropout_value)(timed_layer)
+            timed_layers.append(timed_layer)
+
+        input_layer = ops.concatenate([input_layer, *timed_layers], -1)
+
+        return input_layer
+
     def get_input_layer(
-        self, normalization=True, bacth_norm=True, flatten_input=False
+        self, normalization=True, bacth_norm=True, flatten_input=False,time2vec_kernel_size=None, timedist=False
     ):
         """Returns the input layer with optional normalization and flattening.
 
@@ -138,6 +157,9 @@ class ForeArch:
                 input_layer = BatchNormalization()(input_layer)
             else:
                 input_layer = Normalization()(input_layer)
+
+        if time2vec_kernel_size:
+            input_layer = self.get_time2vec(input_layer,time2vec_kernel_size)
 
         if flatten_input:
             input_layer = Flatten()(input_layer)
@@ -314,7 +336,9 @@ class DenseArch(ForeArch):
 
         return x
 
-    def architecture(self, block_repetition=1, dense_args=None, **kwargs):
+    def architecture(self, block_repetition=1, dense_args=None, 
+            get_input_layer_args = None,
+            **kwargs):
         """Defines the architecture of the model.
 
         This method defines the architecture of the model, which includes an input layer, an architecture block, and an output layer.
@@ -324,7 +348,10 @@ class DenseArch(ForeArch):
         model: keras.Model
             Keras model with the defined architecture
         """
-        input_layer = self.get_input_layer(flatten_input=True)
+        get_input_layer_args = get_input_layer_args or {}
+
+
+        input_layer = self.get_input_layer(flatten_input=True, **get_input_layer_args)
         output_layer = self.arch_block(input_layer)
         block_args = {"dense_args": dense_args}
         if block_repetition == 1:
@@ -448,7 +475,10 @@ class LSTMArch(ForeArch):
         return output_layer
 
     def architecture(
-        self, block_repetition=1, dense_args=None, block_args=None, **kwargs
+        self, block_repetition=1, dense_args=None, block_args=None, 
+                    get_input_layer_args = None,
+
+        **kwargs
     ):
         """Defines the architecture of the model.
 
@@ -468,9 +498,11 @@ class LSTMArch(ForeArch):
         model: keras.Model
             Keras model with the defined architecture
         """
+        get_input_layer_args = get_input_layer_args or {}
+
         if dense_args is None:
             dense_args = {"activation": "softplus"}
-        input_layer = self.get_input_layer(flatten_input=False)
+        input_layer = self.get_input_layer(flatten_input=False, **get_input_layer_args)
         if block_repetition == 1:
             output_layer = self.arch_block(input_layer)
         elif block_repetition > 1:
@@ -617,7 +649,10 @@ class CNNArch(ForeArch):
         return output_layer
 
     def architecture(
-        self, block_repetition=1, multitail=False, conv_args=None, **kwargs
+        self, block_repetition=1, multitail=False, conv_args=None, 
+                    get_input_layer_args = None,
+        
+        **kwargs
     ):
         """Defines the architecture of the model.
 
@@ -635,7 +670,9 @@ class CNNArch(ForeArch):
         model: keras.Model
             Keras model with the defined architecture
         """
-        input_layer = self.get_input_layer(flatten_input=False)
+        get_input_layer_args = get_input_layer_args or {}
+
+        input_layer = self.get_input_layer(flatten_input=False, **get_input_layer_args)
         block_args = {"conv_args": conv_args}
         if block_repetition == 1:
             output_layer = self.arch_block(input_layer, conv_args=conv_args)
@@ -709,7 +746,12 @@ class UNETArch(ForeArch):
             self.Conv = Conv3D
             self.Dropout = Dropout
 
-    def architecture(self, conv_args=None, **kwargs):
+    def architecture(self, conv_args=None, 
+                        get_input_layer_args = None,
+
+    **kwargs):
+        get_input_layer_args = get_input_layer_args or {}
+
         if conv_args is None:
             conv_args = {"filters": 16}
         model_UNET = AttResUNet1D(
@@ -819,10 +861,15 @@ class EncoderDecoder(LSTMArch):
 
 
 class Transformer(ForeArch):
-    def architecture(self, block_repetition=1, **kwargs):
+    def architecture(self, block_repetition=1, 
+                    get_input_layer_args = None,
+    
+    **kwargs):
+        get_input_layer_args = get_input_layer_args or {}
+
         from forecat.transformer import create_vit_classifier
 
-        input_layer = self.get_input_layer()
+        input_layer = self.get_input_layer(**get_input_layer_args)
 
         logits = create_vit_classifier(
             input_layer,

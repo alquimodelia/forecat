@@ -1,5 +1,5 @@
-from keras_core import Sequential, layers, ops
-from keras_core.activations import gelu
+from keras import Sequential, layers, ops
+from keras.activations import gelu
 
 image_size = 72  # We'll resize input images to this size
 patch_size = 6  # Size of the patches to be extract from the input images
@@ -140,7 +140,7 @@ def create_vit_classifier(
         # Skip connection 1.
         x2 = layers.Add()([attention_output, encoded_patches])
         # Layer normalization 2.
-        x3 = layers.BatchNormalization()(x2)
+        x3 = layers.LayerNormalization()(x2)
         # MLP.
         x3 = mlp(
             x3,
