@@ -1,6 +1,7 @@
 from keras import Sequential, layers, ops
 from keras.activations import gelu
-
+import math
+from forecat.utils import adjust_to_multiple
 image_size = 72  # We'll resize input images to this size
 patch_size = 6  # Size of the patches to be extract from the input images
 
@@ -159,6 +160,27 @@ def create_vit_classifier(
     representation = layers.BatchNormalization()(encoded_patches)
     representation = layers.Flatten()(representation)
     representation = layers.Dropout(0.5)(representation)
+
+    # TODO: redo this to get proper nice values on this, and probably remove the extra denses after mlp
+    representation_size_log2 = int(math.log2(representation.shape[-1]))
+    last_dense_size = int(Y_timeseries * n_features_predict)
+
+    final_size_log2 = max(int(math.log2(last_dense_size)), 1)
+    # TODO: verify this, beacuse we are hardcoding only 2 steps in MLP
+    # TODO: clean this dirty code, pretty please
+    # TODO: this is a very experimental situation.. so we should not be forcing ...
+    # https://machinelearningmastery.com/how-to-configure-the-number-of-layers-and-nodes-in-a-neural-network/
+    mlp_head_units_steps = int((representation_size_log2 - final_size_log2)/3)
+    B_value = 2**(representation_size_log2-(mlp_head_units_steps*2))
+    mlp_head_units = [2**(representation_size_log2-mlp_head_units_steps),adjust_to_multiple(B_value, Y_timeseries)]
+    mlp_head_units = [2**(final_size_log2+3),adjust_to_multiple(2**(final_size_log2+1), Y_timeseries)]
+    mlp_head_units = [2**(final_size_log2+3),max(last_dense_size*2, adjust_to_multiple(2**(final_size_log2+1), Y_timeseries))]
+
+    # mlp_head_units = [2**(final_size_log2+2),2**(final_size_log2+1)]
+
+    # mlp_head_units = [128, 64]
+
+
     # Add MLP.
     features = mlp(
         representation,
@@ -166,12 +188,8 @@ def create_vit_classifier(
         dropout_rate=0.5,
         activation=activation_middle,
     )
-    # TODO: make this a multipler of the time dimensiton (24)
-    previous_to_last_dense = int((Y_timeseries * n_features_predict)**2)
-    features = layers.Dense(previous_to_last_dense)(features)
-
     last_output_shape = (Y_timeseries, int(features.shape[-1]/Y_timeseries))
-    reshape = layers.Reshape(last_output_shape)(features)
+    features = layers.Reshape(last_output_shape)(features)
     # Classify outputs.
-    logits = layers.Dense(n_features_predict, activation=activation_end)(reshape)
+    logits = layers.Dense(n_features_predict, activation=activation_end)(features)
     return logits

@@ -879,6 +879,7 @@ class Transformer(ForeArch):
             activation_middle=self.activation_middle,
             transformer_layers=block_repetition,
             n_features_predict=self.n_features_predict,
+            Y_timeseries=self.Y_timeseries,
         )
         model = Model(inputs=self.input_layer, outputs=logits, **kwargs)
         return model
