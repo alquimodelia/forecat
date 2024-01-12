@@ -94,19 +94,15 @@ num_epochs = 10  # For real training, use num_epochs=100. 10 is a test value
 image_size = 72  # We'll resize input images to this size
 patch_size = 6  # Size of the patches to be extract from the input images
 num_patches = (image_size // patch_size) ** 2
-projection_dim = 18
+
 num_heads = 4
-transformer_units = [
-    projection_dim * 2,
-    projection_dim,
-]  # Size of the transformer layers
-transformer_layers = 1
+
+
 mlp_head_units = [
     2048,
     1024,
 ]  # Size of the dense layers of the final classifier
 
-output_shape = (24, 1)
 
 
 def create_vit_classifier(
@@ -116,7 +112,15 @@ def create_vit_classifier(
     activation_middle="relu",
     activation_end="relu",
     transformer_layers=1,
+    Y_timeseries=24,
+    n_features_predict=1,
+
 ):
+    
+    transformer_units = [
+    projection_dim * 2,
+    projection_dim,
+    ]
     inputs = input_layer
     if augmentation:
         # Augment data.
@@ -132,7 +136,7 @@ def create_vit_classifier(
     # Create multiple layers of the Transformer block.
     for _ in range(transformer_layers):
         # Layer normalization 1.
-        x1 = layers.BatchNormalization()(encoded_patches)
+        x1 = layers.LayerNormalization()(encoded_patches)
         # Create a multi-head attention layer.
         attention_output = layers.MultiHeadAttention(
             num_heads=num_heads, key_dim=projection_dim, dropout=0.1
@@ -163,12 +167,11 @@ def create_vit_classifier(
         activation=activation_middle,
     )
     # TODO: make this a multipler of the time dimensiton (24)
-    features = layers.Dense(24**2)(features)
+    previous_to_last_dense = int((Y_timeseries * n_features_predict)**2)
+    features = layers.Dense(previous_to_last_dense)(features)
 
-    output_shape = (24, int(features.shape[-1] / 24))
-    reshape = layers.Reshape(output_shape)(features)
+    last_output_shape = (Y_timeseries, int(features.shape[-1]/Y_timeseries))
+    reshape = layers.Reshape(last_output_shape)(features)
     # Classify outputs.
-    logits = layers.Dense(num_classes, activation=activation_end)(reshape)
-    # # Create the Keras model.
-    # model = Model(inputs=inputs, outputs=logits)
+    logits = layers.Dense(n_features_predict, activation=activation_end)(reshape)
     return logits

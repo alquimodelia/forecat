@@ -137,6 +137,7 @@ class UNet(ModelMagia):
                 number_of_layers.append(count_number_divisions(size, 0))
 
             self._number_of_conv_layers = min(number_of_layers)
+            self._number_of_conv_layers = max(self._number_of_conv_layers, 1)
 
         return self._number_of_conv_layers
 
