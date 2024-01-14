@@ -158,8 +158,14 @@ def create_vit_classifier(
 
     # Create a [batch_size, projection_dim] tensor.
     representation = layers.BatchNormalization()(encoded_patches)
+    representation = layers.MaxPooling1D()(representation)
+
+    # representation = layers.Reshape((Y_timeseries, representation.shape[1]))(representation)
+
     representation = layers.Flatten()(representation)
     representation = layers.Dropout(0.5)(representation)
+
+    # representation = layers.Dense((n_features_predict*Y_timeseries)**2)(representation)
 
     # TODO: redo this to get proper nice values on this, and probably remove the extra denses after mlp
     representation_size_log2 = int(math.log2(representation.shape[-1]))
@@ -175,12 +181,21 @@ def create_vit_classifier(
     mlp_head_units = [2**(representation_size_log2-mlp_head_units_steps),adjust_to_multiple(B_value, Y_timeseries)]
     mlp_head_units = [2**(final_size_log2+3),adjust_to_multiple(2**(final_size_log2+1), Y_timeseries)]
     mlp_head_units = [2**(final_size_log2+3),max(last_dense_size*2, adjust_to_multiple(2**(final_size_log2+1), Y_timeseries))]
-
+    num_heads_units = 2
+    mlp_head_units = [(last_dense_size*(2**(f+1))) for f in range(num_heads_units)]
+    mlp_head_units.reverse()
+    # 96-48 - 302,043 (1.15 MB) - 13s
     # mlp_head_units = [2**(final_size_log2+2),2**(final_size_log2+1)]
 
-    # mlp_head_units = [128, 64]
+    # mlp_head_units = [128, 48] # 400,379 (1.53 MB)
 
 
+    mlp_head_units = [2**(final_size_log2+3),adjust_to_multiple(2**(final_size_log2+1), Y_timeseries)]
+    mlp_head_units = [2**(representation_size_log2-mlp_head_units_steps),adjust_to_multiple(B_value, Y_timeseries)] # 42s
+    # mlp_head_units = [
+    #     2048,
+    #     24*40,
+    # ]    # 70 s
     # Add MLP.
     features = mlp(
         representation,
