@@ -278,7 +278,7 @@ class ForeArch:
             x = Dropout(dropout_rate)(x)
         return x
 
-    def mlp_strategy(self, x, mlp_head_units=None, strategy="",out_shape=None, num_hidden_units=2,**mlp_args):
+    def mlp_strategy(self, x, mlp_head_units=None, strategy="dimwise",out_shape=None, num_hidden_units=2,**mlp_args):
         out_shape=out_shape or self.output_shape
         # 2) drop the dimension to the final one (reshapes, leave the n_features_to_predict out of this)
         if strategy=="dimwise":
