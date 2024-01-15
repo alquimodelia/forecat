@@ -4,6 +4,7 @@
 import numpy as np
 import pandas as pd
 
+
 def adjust_to_multiple(varA, varB):
    if varA % varB == 0:
        return varA

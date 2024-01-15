@@ -1,7 +1,10 @@
+import math
+
 from keras import Sequential, layers, ops
 from keras.activations import gelu
-import math
+
 from forecat.utils import adjust_to_multiple
+
 image_size = 72  # We'll resize input images to this size
 patch_size = 6  # Size of the patches to be extract from the input images
 

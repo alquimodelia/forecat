@@ -1,10 +1,11 @@
 import math
-from forecat.utils import adjust_to_multiple
 
 import numpy as np
 from keras import Model, ops
+from keras.activations import gelu
 from keras.layers import (
     LSTM,
+    Add,
     BatchNormalization,
     Conv1D,
     Conv2D,
@@ -13,18 +14,23 @@ from keras.layers import (
     Dropout,
     Flatten,
     Input,
+    LayerNormalization,
     MaxPooling1D,
-    MaxPooling2D,LayerNormalization,MultiHeadAttention,Add,
+    MaxPooling2D,
     MaxPooling3D,
+    MultiHeadAttention,
     Normalization,
     RepeatVector,
     Reshape,
     TimeDistributed,
 )
-from keras.activations import gelu
 
 from forecat.unet import AttResUNet1D
-from forecat.utils import stays_if_not_bigger, stays_if_not_smaller
+from forecat.utils import (
+    adjust_to_multiple,
+    stays_if_not_bigger,
+    stays_if_not_smaller,
+)
 
 
 class ForeArch:
@@ -280,24 +286,26 @@ class ForeArch:
 
     def mlp_strategy(self, x, mlp_head_units=None, strategy="dimwise",out_shape=None, num_hidden_units=2,**mlp_args):
         out_shape=out_shape or self.output_shape
+        original_x_shape = x.shape
         # 2) drop the dimension to the final one (reshapes, leave the n_features_to_predict out of this)
         if strategy=="dimwise":
-            original_x_shape = x.shape
             num_dims = len(original_x_shape)
             max_dim = num_dims -1
             list_dims = [f for f in range(1, max_dim)]
             transpose_positions = [0, max_dim, *list_dims]
             for dim in list_dims:
                 x=ops.transpose(x, transpose_positions)
-                x = Dense(out_shape[dim])(x)
+                x = Dense(out_shape[(dim-1)])(x)
             x=ops.transpose(x, transpose_positions)
         else:
             # 1) given mlp_units
             if not mlp_head_units:
-                output_size = np.prod(original_x_shape)
+                output_size = np.prod(self.output_shape)
                 # 4) [output_size*((f+1)**2) for f in range]~~~
+                x = Flatten()(x)
                 if strategy=="square":
-                    mlp_head_units =[output_size*((f+1)**2) for f in range(num_hidden_units)]
+                    mlp_head_units =[output_size*((f+2)**2) for f in range(num_hidden_units)]
+                    mlp_head_units.reverse()
                 elif strategy=="logarithmic":
                     # 3) log2 steps
                     representation_size_log2 = int(math.log2(x.shape[-1]))
@@ -305,9 +313,10 @@ class ForeArch:
                     mlp_head_units_steps = int((representation_size_log2 - final_size_log2)/(num_hidden_units+1))
                     B_value = 2**(representation_size_log2-(mlp_head_units_steps*2))
                     # This is the one I like the most, it balance the power of two betweent the flatten values
-                    mlp_head_units = [2**(representation_size_log2-mlp_head_units_steps),adjust_to_multiple(B_value, out_shape[-1])] # 42s
-                x = Flatten()(x)
+                    mlp_head_units = [2**(representation_size_log2-mlp_head_units_steps),adjust_to_multiple(B_value, self.Y_timeseries)] # 42s
                 x = self.mlp(x,mlp_head_units , **mlp_args)
+                last_output_shape = (self.Y_timeseries, int(x.shape[-1]/self.Y_timeseries)) 
+                x = Reshape(last_output_shape)(x)
 
 
         return x
@@ -936,17 +945,24 @@ class Transformer(ForeArch):
 
         return
 
-    def interpretation_layers(self):
-        return
+    def interpretation_layers(self, x, interpretation_strategy="mlp",**interpretation_strategy_args):
+        if interpretation_strategy=="mlp":
+            x = self.mlp_strategy(x, **interpretation_strategy_args)
+        elif interpretation_strategy=="cnn":
+            # TODO: todo
+            x = CNNArch.arch_block(self,x, **interpretation_strategy_args)
+        x = Dense(self.n_features_predict)(x)
+        return x
 
     def architecture(self, block_repetition=1, 
                     get_input_layer_args = None,
                     arch_block_args=None,
+                    interpretation_layers_args=None,
                     **kwargs):
         get_input_layer_args = get_input_layer_args or {}
         arch_block_args = arch_block_args or {}
+        interpretation_layers_args = interpretation_layers_args or {}
 
-        from forecat.transformer import create_vit_classifier
 
         input_layer = self.get_input_layer(**get_input_layer_args)
 
@@ -965,8 +981,10 @@ class Transformer(ForeArch):
         #     n_features_predict=self.n_features_predict,
         #     Y_timeseries=self.Y_timeseries,
         # )
+        output = self.interpretation_layers(input_layer, **interpretation_layers_args)
 
 
 
-        model = Model(inputs=self.input_layer, outputs=logits, **kwargs)
+
+        model = Model(inputs=self.input_layer, outputs=output, **kwargs)
         return model

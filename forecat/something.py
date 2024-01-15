@@ -1,8 +1,8 @@
-import os
-
-os.environ["KERAS_BACKEND"] = "torch"  # @param ["tensorflow", "jax", "torch"]
 
 from forecat.models_definitions import MODELS_ARCHS, get_model_from_def
+
+# os.environ["KERAS_BACKEND"] = "torch"  # @param ["tensorflow", "jax", "torch"]
+
 
 input_args = {
     "X_timeseries": 6, # Number of sentinel images
@@ -30,6 +30,7 @@ StackedDense = get_model_from_def("StackedDense", input_args=input_args,model_st
 StackedDense.summary()
 
 import numpy as np
+
 # Create the test data
 input_shape = (10912, *TRANSFORMER.input_shape[1:])
 output_shape = (10912, *TRANSFORMER.output_shape[1:])
