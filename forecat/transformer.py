@@ -106,6 +106,7 @@ mlp_head_units = [
 
 
 
+
 def create_vit_classifier(
     input_layer,
     augmentation=False,
@@ -115,6 +116,7 @@ def create_vit_classifier(
     transformer_layers=1,
     Y_timeseries=24,
     n_features_predict=1,
+    num_heads=8,
 
 ):
     
@@ -158,11 +160,11 @@ def create_vit_classifier(
 
     # Create a [batch_size, projection_dim] tensor.
     representation = layers.BatchNormalization()(encoded_patches)
-    representation = layers.MaxPooling1D()(representation)
+    # representation = layers.MaxPooling1D()(representation)
 
     # representation = layers.Reshape((Y_timeseries, representation.shape[1]))(representation)
 
-    representation = layers.Flatten()(representation)
+    # representation = layers.Flatten()(representation)
     representation = layers.Dropout(0.5)(representation)
 
     # representation = layers.Dense((n_features_predict*Y_timeseries)**2)(representation)
@@ -191,20 +193,35 @@ def create_vit_classifier(
 
 
     mlp_head_units = [2**(final_size_log2+3),adjust_to_multiple(2**(final_size_log2+1), Y_timeseries)]
+
+    # This is the one I like the most, it balance the power of two betweent the flatten values
     mlp_head_units = [2**(representation_size_log2-mlp_head_units_steps),adjust_to_multiple(B_value, Y_timeseries)] # 42s
+
+
+    # Just apply one with lower parameters
+    mlp_head_units = [last_dense_size**2, (last_dense_size**2)//2] #
+
+    representation = layers.Reshape((representation.shape[2], representation.shape[1]))(representation)
+    representation = layers.Dense(Y_timeseries, activation=activation_middle)(representation)
+
+
     # mlp_head_units = [
     #     2048,
     #     24*40,
     # ]    # 70 s
     # Add MLP.
-    features = mlp(
-        representation,
-        hidden_units=mlp_head_units,
-        dropout_rate=0.5,
-        activation=activation_middle,
-    )
-    last_output_shape = (Y_timeseries, int(features.shape[-1]/Y_timeseries))
-    features = layers.Reshape(last_output_shape)(features)
+    # features = mlp(
+    #     representation,
+    #     hidden_units=mlp_head_units,
+    #     dropout_rate=0.5,
+    #     activation=activation_middle,
+    # )
+    # features = layers.Dense(n_features_predict, activation=activation_middle)(representation)
+
+    # last_output_shape = (Y_timeseries, int(features.shape[-1]/Y_timeseries))
+    features = layers.Reshape((representation.shape[2], representation.shape[1]))(representation)
+
+    # features = layers.Reshape(last_output_shape)(features)
     # Classify outputs.
     logits = layers.Dense(n_features_predict, activation=activation_end)(features)
     return logits

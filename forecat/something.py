@@ -18,6 +18,8 @@ input_args = {
 }
 UNET = get_model_from_def("UNET", input_args=input_args,model_structures=MODELS_ARCHS,)
 TRANSFORMER = get_model_from_def("Transformer", input_args=input_args,model_structures=MODELS_ARCHS,)
+Stacked6Transformer = get_model_from_def("Stacked6Transformer", input_args=input_args,model_structures=MODELS_ARCHS,)
+
 StackedCNN = get_model_from_def("StackedCNN", input_args=input_args,model_structures=MODELS_ARCHS,)
 
 UNET.summary()
@@ -42,5 +44,8 @@ compile_args = {
 TRANSFORMER.compile(**compile_args)
 TRANSFORMER.fit(X_test, Y_test, epochs=2)
 
-StackedDense.compile(**compile_args)
+Stacked6Transformer.compile(**compile_args)
 StackedDense.fit(X_test, Y_test, epochs=2)
+
+StackedDense.compile(**compile_args)
+Stacked6Transformer.fit(X_test, Y_test, epochs=2)

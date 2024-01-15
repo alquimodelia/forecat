@@ -1,4 +1,5 @@
 import math
+from forecat.utils import adjust_to_multiple
 
 import numpy as np
 from keras import Model, ops
@@ -13,13 +14,14 @@ from keras.layers import (
     Flatten,
     Input,
     MaxPooling1D,
-    MaxPooling2D,
+    MaxPooling2D,LayerNormalization,MultiHeadAttention,Add,
     MaxPooling3D,
     Normalization,
     RepeatVector,
     Reshape,
     TimeDistributed,
 )
+from keras.activations import gelu
 
 from forecat.unet import AttResUNet1D
 from forecat.utils import stays_if_not_bigger, stays_if_not_smaller
@@ -269,6 +271,46 @@ class ForeArch:
     def architecture(self):
         pass
 
+    def mlp(self, x, hidden_units, dropout_rate=None, activation=gelu):
+        dropout_rate = dropout_rate or self.dropout_value
+        for units in hidden_units:
+            x = Dense(units, activation=activation)(x)
+            x = Dropout(dropout_rate)(x)
+        return x
+
+    def mlp_strategy(self, x, mlp_head_units=None, strategy="",out_shape=None, num_hidden_units=2,**mlp_args):
+        out_shape=out_shape or self.output_shape
+        # 2) drop the dimension to the final one (reshapes, leave the n_features_to_predict out of this)
+        if strategy=="dimwise":
+            original_x_shape = x.shape
+            num_dims = len(original_x_shape)
+            max_dim = num_dims -1
+            list_dims = [f for f in range(1, max_dim)]
+            transpose_positions = [0, max_dim, *list_dims]
+            for dim in list_dims:
+                x=ops.transpose(x, transpose_positions)
+                x = Dense(out_shape[dim])(x)
+            x=ops.transpose(x, transpose_positions)
+        else:
+            # 1) given mlp_units
+            if not mlp_head_units:
+                output_size = np.prod(original_x_shape)
+                # 4) [output_size*((f+1)**2) for f in range]~~~
+                if strategy=="square":
+                    mlp_head_units =[output_size*((f+1)**2) for f in range(num_hidden_units)]
+                elif strategy=="logarithmic":
+                    # 3) log2 steps
+                    representation_size_log2 = int(math.log2(x.shape[-1]))
+                    final_size_log2 = max(int(math.log2(output_size)), 1)
+                    mlp_head_units_steps = int((representation_size_log2 - final_size_log2)/(num_hidden_units+1))
+                    B_value = 2**(representation_size_log2-(mlp_head_units_steps*2))
+                    # This is the one I like the most, it balance the power of two betweent the flatten values
+                    mlp_head_units = [2**(representation_size_log2-mlp_head_units_steps),adjust_to_multiple(B_value, out_shape[-1])] # 42s
+                x = Flatten()(x)
+                x = self.mlp(x,mlp_head_units , **mlp_args)
+
+
+        return x
 
 class DenseArch(ForeArch):
     """This architecture uses a dense layer to solve the problem.
@@ -861,25 +903,70 @@ class EncoderDecoder(LSTMArch):
 
 
 class Transformer(ForeArch):
+
+    def arch_block(self, input_layer, projection_dim=None,transformer_units=None, num_heads=8):
+        projection_dim = projection_dim or self.n_features_train
+        transformer_units = transformer_units or [projection_dim * 2, projection_dim]
+        if transformer_units[-1]!=projection_dim:
+            # TODO: warning that we are changing this, because the transformer block needs to finisehd with the same size
+            transformer_units[-1]=projection_dim
+
+        # Layer normalization 1.
+        x1 = LayerNormalization()(input_layer)
+        # Create a multi-head attention layer.
+        attention_output = MultiHeadAttention(
+            num_heads=num_heads, key_dim=projection_dim, dropout=0.1
+        )(x1, x1)
+        # Skip connection 1.
+        x2 = Add()([attention_output, input_layer])
+        # Layer normalization 2.
+        x3 = LayerNormalization()(x2)
+        # MLP.
+        x3 = self.mlp(
+            x3,
+            hidden_units=transformer_units,
+            dropout_rate=0.1,
+            activation=self.activation_middle,
+        )
+        # Skip connection 2.
+        input_layer = Add()([x3, x2])
+        return input_layer
+
+    def get_decoder(self, logits):
+
+        return
+
+    def interpretation_layers(self):
+        return
+
     def architecture(self, block_repetition=1, 
                     get_input_layer_args = None,
-    
-    **kwargs):
+                    arch_block_args=None,
+                    **kwargs):
         get_input_layer_args = get_input_layer_args or {}
+        arch_block_args = arch_block_args or {}
 
         from forecat.transformer import create_vit_classifier
 
         input_layer = self.get_input_layer(**get_input_layer_args)
 
-        logits = create_vit_classifier(
-            input_layer,
-            augmentation=False,
-            projection_dim=self.n_features_train,
-            activation_end=self.activation_end,
-            activation_middle=self.activation_middle,
-            transformer_layers=block_repetition,
-            n_features_predict=self.n_features_predict,
-            Y_timeseries=self.Y_timeseries,
-        )
+        for _ in range(block_repetition):
+            # TODO: change this in a way that you can define the archs per iteration
+            input_layer = self.arch_block(input_layer, **arch_block_args)
+
+
+        # logits = create_vit_classifier(
+        #     input_layer,
+        #     augmentation=False,
+        #     projection_dim=self.n_features_train,
+        #     activation_end=self.activation_end,
+        #     activation_middle=self.activation_middle,
+        #     transformer_layers=block_repetition,
+        #     n_features_predict=self.n_features_predict,
+        #     Y_timeseries=self.Y_timeseries,
+        # )
+
+
+
         model = Model(inputs=self.input_layer, outputs=logits, **kwargs)
         return model
