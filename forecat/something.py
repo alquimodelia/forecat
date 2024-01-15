@@ -44,8 +44,8 @@ compile_args = {
 TRANSFORMER.compile(**compile_args)
 TRANSFORMER.fit(X_test, Y_test, epochs=2)
 
-Stacked6Transformer.compile(**compile_args)
+StackedDense.compile(**compile_args)
 StackedDense.fit(X_test, Y_test, epochs=2)
 
-StackedDense.compile(**compile_args)
+Stacked6Transformer.compile(**compile_args)
 Stacked6Transformer.fit(X_test, Y_test, epochs=2)
