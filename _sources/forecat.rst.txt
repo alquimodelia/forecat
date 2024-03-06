@@ -20,6 +20,14 @@ forecat.models\_definitions module
    :undoc-members:
    :show-inheritance:
 
+forecat.something module
+------------------------
+
+.. automodule:: forecat.something
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 forecat.transformer module
 --------------------------
 
