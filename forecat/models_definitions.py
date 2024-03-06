@@ -11,6 +11,24 @@ MODELS_ARCHS = {
     "VanillaCNN": {
         "arch": "CNNArch",
     },
+    "VanillaCNNConc": {
+        "arch": "CNNArch",
+        "architecture_args": {"gating": True},
+    },
+    "VanillaCNNConcAfter": {
+        "arch": "CNNArch",
+        "architecture_args": {"gating": "after"},
+    },
+    "VanillaCNNNorm": {
+        "get_input_layer_args":{"bacth_norm":False},
+        "arch": "CNNArch",
+    },
+    "VanillaCNNConcNorm": {
+        "arch": "CNNArch",
+        "architecture_args": {
+            "get_input_layer_args":{"bacth_norm":False},
+            "gating": True},
+    },
     "VanillaDense": {"arch": "DenseArch"},
     "VanillaLSTM": {"arch": "LSTMArch"},
     "StackedLSTMA": {
@@ -108,11 +126,11 @@ def get_model_from_def(model_name, architecture_args=None,input_args=None,model_
     # Get the model configuration
     model_conf = model_structures[model_name]
     architecture_args_conf = model_conf.get("architecture_args", {})
-    architecture_args.update(architecture_args_conf)
+    architecture_args_conf.update(architecture_args)
     
     # Create the architecture and model
     architecture_class = getattr(archs, model_conf["arch"])
     forearch = architecture_class(**input_args)
-    foremodel = forearch.architecture(**architecture_args)
+    foremodel = forearch.architecture(**architecture_args_conf)
 
     return foremodel

@@ -19,7 +19,7 @@ from keras.layers import (
     MaxPooling2D,
     MaxPooling3D,
     MultiHeadAttention,
-    Normalization,
+    Normalization,Concatenate,
     RepeatVector,
     Reshape,
     TimeDistributed,
@@ -388,7 +388,7 @@ class DenseArch(ForeArch):
         return x
 
     def architecture(self, block_repetition=1, dense_args=None, 
-            get_input_layer_args = None,
+            get_input_layer_args = None,filters=None,
             **kwargs):
         """Defines the architecture of the model.
 
@@ -527,7 +527,7 @@ class LSTMArch(ForeArch):
 
     def architecture(
         self, block_repetition=1, dense_args=None, block_args=None, 
-                    get_input_layer_args = None,
+                    get_input_layer_args = None, filters=None,
 
         **kwargs
     ):
@@ -701,7 +701,7 @@ class CNNArch(ForeArch):
 
     def architecture(
         self, block_repetition=1, multitail=False, conv_args=None, 
-                    get_input_layer_args = None,
+                    get_input_layer_args = None,filters=None, gating=False,
         
         **kwargs
     ):
@@ -756,6 +756,17 @@ class CNNArch(ForeArch):
             )
         output_layer = Flatten()(output_layer)
 
+        if gating:
+            gate_input =  self.input_layer
+            if gating=="after":
+                gate_input=input_layer
+            input_keras_one_dim =ops.split(gate_input, gate_input.shape[-1], axis=-1)[0]
+            # input_keras_one_dim =self.input_layer[:,:,0]
+            # input_keras_one_dim = ops.slice(self.input_layer, [0,0,0], [self.input_layer.shape[0],self.input_layer.shape[1],1])
+            input_keras_one_dim = Flatten()(input_keras_one_dim)
+            # do the magic here
+            output_layer = Concatenate()([output_layer, input_keras_one_dim])
+
         if multitail is not False:
             if isinstance(multitail, list):
                 multitail_repetition = len(multitail)
@@ -798,7 +809,7 @@ class UNETArch(ForeArch):
             self.Dropout = Dropout
 
     def architecture(self, conv_args=None, 
-                        get_input_layer_args = None,
+                        get_input_layer_args = None,filters=None,
 
     **kwargs):
         get_input_layer_args = get_input_layer_args or {}
@@ -957,7 +968,7 @@ class Transformer(ForeArch):
     def architecture(self, block_repetition=1, 
                     get_input_layer_args = None,
                     arch_block_args=None,
-                    interpretation_layers_args=None,
+                    interpretation_layers_args=None,filters=None,
                     **kwargs):
         get_input_layer_args = get_input_layer_args or {}
         arch_block_args = arch_block_args or {}
