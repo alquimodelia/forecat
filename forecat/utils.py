@@ -5,6 +5,12 @@ import numpy as np
 import pandas as pd
 
 
+def adjust_to_multiple(varA, varB):
+   if varA % varB == 0:
+       return varA
+   else:
+       return round(varA / varB) * varB
+   
 def stays_if_not_bigger(n1, n2):
     if n2 > n1:
         return n1
